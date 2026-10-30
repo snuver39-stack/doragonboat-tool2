@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaddleBalance Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+    body { font-family: 'Noto Sans JP', sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    .drag-over { border-color: #38bdf8 !important; background-color: rgba(56, 189, 248, 0.15) !important; }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-gradient-to-br from-cyan-500 to-blue-600 p-2.5 rounded-xl text-white shadow-lg">
+          <i class="fa-solid fa-ship text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            PaddleBalance Pro
+          </h1>
+          <p class="text-xs text-slate-400">ペーロン & ドラゴンボート チーム編成</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs px-2.5 py-1 bg-slate-800 text-slate-400 rounded-lg border border-slate-700 flex items-center gap-1.5">
+          <i class="fa-solid fa-hard-drive text-emerald-400"></i> <span id="saveStatus">保存済み</span>
+        </span>
+        <button id="openBoatConfigBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5 font-medium">
+          <i class="fa-solid fa-gear text-cyan-400"></i> 艇種設定
+        </button>
+        <button id="resetAppBtn" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs px-3 py-2 rounded-lg border border-rose-900/50 transition">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl">
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4 pb-4 border-b border-slate-800">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">使用する艇種</label>
+            <select id="boatTypeSelect" class="bg-slate-800 border border-slate-700 text-slate-100 text-sm font-bold rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none min-w-[220px]">
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button id="autoBalanceBtn" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg shadow-md transition flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> スマート自動編成
+            </button>
+            <button id="clearBoardBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium px-3 py-2.5 rounded-lg border border-slate-700 transition">
+              解除
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div class="text-xs text-slate-400">総重量 / 搭乗数</div>
+            <div class="text-lg font-bold text-slate-100 mt-0.5" id="totalWeightDisplay">0.0 kg</div>
+            <div class="text-xs text-slate-500" id="onboardCountDisplay">0 / 0 名</div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div class="text-xs text-slate-400">左右重量差 (L - R)</div>
+            <div class="text-lg font-bold text-slate-100 mt-0.5" id="sideDiffDisplay">0.0 kg</div>
+            <div class="text-xs text-emerald-400 font-medium" id="sideBalanceStatus">良好</div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div class="text-xs text-slate-400">左舷 / 右舷</div>
+            <div class="text-xs font-semibold text-slate-200 mt-1 flex justify-between">
+              <span class="text-cyan-400" id="leftWeightDisplay">L: 0.0kg</span>
+              <span class="text-indigo-400" id="rightWeightDisplay">R: 0.0kg</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden flex">
+              <div id="leftBar" class="bg-cyan-500 h-full transition-all" style="width: 50%"></div>
+              <div id="rightBar" class="bg-indigo-500 h-full transition-all" style="width: 50%"></div>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div class="text-xs text-slate-400">前後バランス (前:中:後)</div>
+            <div class="text-xs font-bold text-slate-200 mt-1" id="frontBackRatioDisplay">-- : -- : --</div>
+            <div class="text-[11px] text-slate-500 mt-0.5" id="frontBackWeightDisplay">0kg / 0kg / 0kg</div>
+          </div>
+        </div>
+
+        <div class="relative bg-slate-950 p-6 rounded-2xl border border-slate-800 overflow-x-auto custom-scrollbar flex flex-col items-center min-h-[520px]">
+          <div class="text-center mb-4">
+            <span class="inline-block bg-slate-800 text-cyan-400 border border-slate-700 text-xs px-3 py-1 rounded-full font-bold">
+              <i class="fa-solid fa-arrow-up"></i> 進行方向 (BOW / 艇首)
+            </span>
+          </div>
+          <div id="boatLayoutContainer" class="w-full max-w-md flex flex-col items-center gap-3"></div>
+          <div class="text-center mt-6">
+            <span class="inline-block bg-slate-900 text-slate-500 border border-slate-800 text-xs px-3 py-1 rounded-full font-medium">
+              <i class="fa-solid fa-arrow-down"></i> 艇尾 (STERN)
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl flex flex-col h-full">
+        <h2 class="text-base font-bold text-slate-100 mb-4 flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-users text-cyan-400"></i> メンバー登録 & 管理
+          </span>
+          <span class="text-xs bg-slate-800 text-slate-400 font-normal px-2.5 py-1 rounded-full border border-slate-700">
+            登録数: <strong id="totalMemberCount" class="text-cyan-400 font-bold">0</strong> 名
+          </span>
+        </h2>
+
+        <form id="addMemberForm" class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">氏名 / ニックネーム <span class="text-rose-400">*</span></label>
+              <input type="text" id="memberName" required placeholder="例: 龍野 太郎" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">体重 (kg) <span class="text-slate-500">(任意)</span></label>
+              <input type="number" id="memberWeight" step="0.1" min="30" max="150" placeholder="未設定可" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">得意・希望サイド</label>
+              <select id="memberSide" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                <option value="BOTH">両方可 (Both)</option>
+                <option value="LEFT">左舷専用 (Left)</option>
+                <option value="RIGHT">右舷専用 (Right)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">役職適性</label>
+              <select id="memberRole" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                <option value="paddler">漕手 (Paddler)</option>
+                <option value="drummer">太鼓手 (Drummer)</option>
+                <option value="steer">舵手 (Steer)</option>
+                <option value="gong">銅鑼手 (Gong)</option>
+                <option value="captain">艇長 (Captain)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 hover:text-cyan-300 font-bold text-xs py-2.5 rounded-lg transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> メンバーを追加
+          </button>
+        </form>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button id="addSampleDataBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-users-line text-cyan-400"></i> サンプル登録 (35名)
+          </button>
+          <button id="exportCsvBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-file-export text-emerald-400"></i> CSV出力
+          </button>
+          <label class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-file-import text-amber-400"></i> CSV取込
+            <input type="file" id="importCsvInput" accept=".csv" class="hidden">
+          </label>
+        </div>
+
+        <div class="flex-1 flex flex-col bg-slate-950 rounded-xl p-4 border border-slate-800">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-chair text-amber-400"></i> 控え選手 (未配置) 
+              <span id="benchCount" class="bg-slate-800 text-amber-400 text-xs px-2 py-0.5 rounded-full ml-1 font-bold">0</span>
+            </h3>
+          </div>
+          <div id="benchList" class="flex-1 overflow-y-auto custom-scrollbar max-h-[420px] pr-1 space-y-2"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="boatConfigModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+      <div class="flex justify-between items-center pb-4 border-b border-slate-800 mb-5">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-cyan-400"></i> 艇種設定 / カスタマイズ
+        </h3>
+        <button id="closeBoatConfigModalBtn" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <div class="space-y-4 mb-6" id="boatTypeListContainer"></div>
+      <form id="addBoatTypeForm" class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <h4 class="text-sm font-bold text-cyan-400 mb-3">新しい艇種を作成</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">艇種名</label>
+            <input type="text" id="newBoatName" required placeholder="例: ペーロン競漕" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">漕ぎ手 行数</label>
+            <input type="number" id="newBoatRows" min="1" max="25" value="14" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">役職</label>
+            <div class="flex flex-wrap gap-2 text-xs text-slate-300 mt-2">
+              <label class="flex items-center gap-1"><input type="checkbox" id="roleDrummer" checked> 太鼓</label>
+              <label class="flex items-center gap-1"><input type="checkbox" id="roleSteer" checked> 舵手</label>
+              <label class="flex items-center gap-1"><input type="checkbox" id="roleGong" checked> 銅鑼</label>
+              <label class="flex items-center gap-1"><input type="checkbox" id="roleCaptain" checked> 艇長</label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-2 rounded-lg transition">追加</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_BOAT_TYPES = [
+      { id: 'dragon-10', name: 'ドラゴンボート (10人乗り)', paddlerRows: 4, roles: { drummer: 1, steer: 1, gong: 0, captain: 0 } },
+      { id: 'peiron-32', name: 'ペーロン競漕 (32人乗り)', paddlerRows: 14, roles: { drummer: 1, steer: 1, gong: 1, captain: 1 } }
+    ];
+    let state = {
+      boatTypes: JSON.parse(localStorage.getItem('pb_boatTypes')) || DEFAULT_BOAT_TYPES,
+      selectedBoatId: localStorage.getItem('pb_selectedBoatId') || 'peiron-32',
+      members: JSON.parse(localStorage.getItem('pb_members')) || [],
+      assignments: JSON.parse(localStorage.getItem('pb_assignments')) || {}
+    };
+    function saveState() {
+      localStorage.setItem('pb_boatTypes', JSON.stringify(state.boatTypes));
+      localStorage.setItem('pb_selectedBoatId', state.selectedBoatId);
+      localStorage.setItem('pb_members', JSON.stringify(state.members));
+      localStorage.setItem('pb_assignments', JSON.stringify(state.assignments));
+    }
+    function getSelectedBoat() {
+      return state.boatTypes.find(b => b.id === state.selectedBoatId) || state.boatTypes[0];
+    }
+    function renderApp() {
+      renderBoatTypeOptions();
+      renderBoatLayout();
+      renderBench();
+      calculateBalance();
+      saveState();
+    }
+    function renderBoatTypeOptions() {
+      const select = document.getElementById('boatTypeSelect');
+      select.innerHTML = '';
+      state.boatTypes.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.name;
+        if (b.id === state.selectedBoatId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    function renderBoatLayout() {
+      const container = document.getElementById('boatLayoutContainer');
+      container.innerHTML = '';
+      const boat = getSelectedBoat();
+      if (boat.roles.drummer || boat.roles.gong) {
+        const topRow = document.createElement('div');
+        topRow.className = 'flex justify-center gap-3 w-full';
+        if (boat.roles.drummer) topRow.appendChild(createSeatCard('drummer_0', '太鼓手', 'bg-amber-950/40 border-amber-800/60'));
+        if (boat.roles.gong) topRow.appendChild(createSeatCard('gong_0', '銅鑼手', 'bg-yellow-950/40 border-yellow-800/60'));
+        container.appendChild(topRow);
+      }
+      for (let r = 1; r <= boat.paddlerRows; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'flex justify-between items-center gap-3 w-full bg-slate-900/40 p-1.5 rounded-xl border border-slate-800/50';
+        rowDiv.appendChild(createSeatCard(`paddler_L_${r}`, `L${r} (左舷)`, 'border-cyan-900/50 bg-cyan-950/20'));
+        const rowLabel = document.createElement('div');
+        rowLabel.className = 'text-[10px] font-bold text-slate-500 w-6 text-center';
+        rowLabel.textContent = `${r}`;
+        rowDiv.appendChild(rowLabel);
+        rowDiv.appendChild(createSeatCard(`paddler_R_${r}`, `R${r} (右舷)`, 'border-indigo-900/50 bg-indigo-950/20'));
+        container.appendChild(rowDiv);
+      }
+      if (boat.roles.steer || boat.roles.captain) {
+        const bottomRow = document.createElement('div');
+        bottomRow.className = 'flex justify-center gap-3 w-full mt-1';
+        if (boat.roles.captain) bottomRow.appendChild(createSeatCard('captain_0', '艇長', 'bg-purple-950/40 border-purple-800/60'));
+        if (boat.roles.steer) bottomRow.appendChild(createSeatCard('steer_0', '舵手', 'bg-emerald-950/40 border-emerald-800/60'));
+        container.appendChild(bottomRow);
+      }
+    }
+    function createSeatCard(seatId, label, extraClass = '') {
+      const card = document.createElement('div');
+      card.className = `flex-1 min-h-[58px] rounded-lg border border-dashed border-slate-700 p-2 flex flex-col justify-center transition-all cursor-pointer relative ${extraClass}`;
+      const assignedMemberId = state.assignments[seatId];
+      const member = state.members.find(m => m.id === assignedMemberId);
+      if (member) {
+        const weightText = member.weight ? `${member.weight}kg` : '未設定';
+        card.classList.remove('border-dashed');
+        card.classList.add('border-solid', 'bg-slate-800', 'shadow');
+        card.innerHTML = `<div class="flex justify-between items-start"><span class="text-[10px] text-slate-400">${label}</span><button onclick="unassignSeat('${seatId}', event)" class="text-slate-500 hover:text-rose-400 text-xs px-1">×</button></div><div class="font-bold text-xs text-slate-100 truncate mt-0.5">${member.name}</div><div class="text-[10px] text-slate-400 mt-0.5">${weightText}</div>`;
+      } else {
+        card.innerHTML = `<div class="text-[10px] text-slate-500 text-center">${label}</div><div class="text-[11px] text-slate-600 text-center mt-0.5">+ 配置</div>`;
+      }
+      card.onclick = () => {
+        if (state.selectedMemberForMove) {
+          assignMemberToSeat(state.selectedMemberForMove, seatId);
+          state.selectedMemberForMove = null;
+          renderApp();
+        }
+      };
+      return card;
+    }
+    function renderBench() {
+      const benchList = document.getElementById('benchList');
+      benchList.innerHTML = '';
+      const assignedMemberIds = new Set(Object.values(state.assignments));
+      const benchMembers = state.members.filter(m => !assignedMemberIds.has(m.id));
+      document.getElementById('benchCount').textContent = benchMembers.length;
+      document.getElementById('totalMemberCount').textContent = state.members.length;
+      if (benchMembers.length === 0) {
+        benchList.innerHTML = '<div class="text-xs text-slate-600 text-center py-6">控え選手はいません</div>';
+        return;
+      }
+      benchMembers.forEach(m => {
+        const item = document.createElement('div');
+        const isSelected = state.selectedMemberForMove === m.id;
+        item.className = `p-2.5 rounded-lg border transition-all cursor-pointer flex justify-between items-center ${isSelected ? 'bg-cyan-950 border-cyan-500 ring-2 ring-cyan-500/50' : 'bg-slate-900 border-slate-800'}`;
+        item.onclick = () => {
+          state.selectedMemberForMove = isSelected ? null : m.id;
+          renderBench();
+        };
+        item.innerHTML = `<div><div class="text-xs font-bold text-slate-200">${m.name}</div><div class="text-[10px] text-slate-400">${m.weight ? m.weight+'kg' : '未設定'}</div></div><button onclick="deleteMember('${m.id}', event)" class="text-slate-600 hover:text-rose-400 text-xs px-1"><i class="fa-solid fa-trash"></i></button>`;
+        benchList.appendChild(item);
+      });
+    }
+    function assignMemberToSeat(memberId, seatId) {
+      for (const [sId, mId] of Object.entries(state.assignments)) {
+        if (mId === memberId) delete state.assignments[sId];
+      }
+      state.assignments[seatId] = memberId;
+      renderApp();
+    }
+    window.unassignSeat = (seatId, event) => {
+      if (event) event.stopPropagation();
+      delete state.assignments[seatId];
+      renderApp();
+    };
+    window.deleteMember = (memberId, event) => {
+      if (event) event.stopPropagation();
+      state.members = state.members.filter(m => m.id !== memberId);
+      for (const [sId, mId] of Object.entries(state.assignments)) {
+        if (mId === memberId) delete state.assignments[sId];
+      }
+      renderApp();
+    };
+    function calculateBalance() {
+      let totalW = 0, leftW = 0, rightW = 0, count = 0;
+      Object.entries(state.assignments).forEach(([seatId, memberId]) => {
+        const m = state.members.find(x => x.id === memberId);
+        if (!m) return;
+        count++;
+        const w = m.weight ? parseFloat(m.weight) : 55.0;
+        totalW += w;
+        if (seatId.includes('_L_')) leftW += w;
+        if (seatId.includes('_R_')) rightW += w;
+      });
+      const diff = leftW - rightW;
+      document.getElementById('totalWeightDisplay').textContent = `${totalW.toFixed(1)} kg`;
+      document.getElementById('onboardCountDisplay').textContent = `${count} 名`;
+      document.getElementById('sideDiffDisplay').textContent = `${Math.abs(diff).toFixed(1)} kg`;
+      document.getElementById('leftWeightDisplay').textContent = `L: ${leftW.toFixed(1)}kg`;
+      document.getElementById('rightWeightDisplay').textContent = `R: ${rightW.toFixed(1)}kg`;
+    }
+    document.getElementById('addMemberForm').onsubmit = (e) => {
+      e.preventDefault();
+      const name = document.getElementById('memberName').value.trim();
+      const weightVal = document.getElementById('memberWeight').value;
+      const weight = weightVal !== '' ? parseFloat(weightVal) : null;
+      if (!name) return;
+      state.members.push({ id: 'm_' + Date.now(), name, weight, side: document.getElementById('memberSide').value, role: document.getElementById('memberRole').value });
+      document.getElementById('memberName').value = '';
+      document.getElementById('memberWeight').value = '';
+      renderApp();
+    };
+    document.getElementById('boatTypeSelect').onchange = (e) => {
+      state.selectedBoatId = e.target.value;
+      state.assignments = {};
+      renderApp();
+    };
+    document.getElementById('clearBoardBtn').onclick = () => { state.assignments = {}; renderApp(); };
+    document.getElementById('autoBalanceBtn').onclick = () => {
+      const boat = getSelectedBoat();
+      state.assignments = {};
+      let available = [...state.members];
+      ['drummer', 'gong', 'steer', 'captain'].forEach(role => {
+        if (boat.roles[role]) {
+          const candidate = available.find(m => m.role === role) || available.find(m => m.role === 'paddler');
+          if (candidate) {
+            state.assignments[`${role}_0`] = candidate.id;
+            available = available.filter(m => m.id !== candidate.id);
+          }
+        }
+      });
+      const paddlers = available.sort((a, b) => (b.weight || 55) - (a.weight || 55));
+      for (let r = 1; r <= boat.paddlerRows; r++) {
+        const pLeft = paddlers.find(p => p.side !== 'RIGHT');
+        if (pLeft) {
+          state.assignments[`paddler_L_${r}`] = pLeft.id;
+          paddlers.splice(paddlers.indexOf(pLeft), 1);
+        }
+        const pRight = paddlers.find(p => p.side !== 'LEFT');
+        if (pRight) {
+          state.assignments[`paddler_R_${r}`] = pRight.id;
+          paddlers.splice(paddlers.indexOf(pRight), 1);
+        }
+      }
+      renderApp();
+    };
+    document.getElementById('addSampleDataBtn').onclick = () => {
+      for (let i = 1; i <= 35; i++) {
+        state.members.push({ id: 's_' + i, name: `選手 ${i}号`, weight: 60 + (i % 15), side: 'BOTH', role: 'paddler' });
+      }
+      renderApp();
+    };
+    document.getElementById('exportCsvBtn').onclick = () => {
+      let csv = 'Name,Weight,Side,Role\n';
+      state.members.forEach(m => csv += `"${m.name}",${m.weight || ''},${m.side},${m.role}\n`);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      link.download = 'team_members.csv';
+      link.click();
+    };
+    const modal = document.getElementById('boatConfigModal');
+    document.getElementById('openBoatConfigBtn').onclick = () => {
+      const container = document.getElementById('boatTypeListContainer');
+      container.innerHTML = '';
+      state.boatTypes.forEach(b => {
+        container.innerHTML += `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center"><div class="text-sm text-slate-200">${b.name} (${b.paddlerRows*2}人漕ぎ)</div><button onclick="deleteBoatType('${b.id}')" class="text-xs bg-rose-950 text-rose-300 px-2.5 py-1 rounded">削除</button></div>`;
+      });
+      modal.classList.remove('hidden');
+    };
+    document.getElementById('closeBoatConfigModalBtn').onclick = () => modal.classList.add('hidden');
+    window.deleteBoatType = (id) => {
+      if (state.boatTypes.length <= 1) return alert('最低1つ必要です');
+      state.boatTypes = state.boatTypes.filter(b => b.id !== id);
+      if (state.selectedBoatId === id) state.selectedBoatId = state.boatTypes[0].id;
+      modal.classList.add('hidden');
+      renderApp();
+    };
+    document.getElementById('addBoatTypeForm').onsubmit = (e) => {
+      e.preventDefault();
+      state.boatTypes.push({
+        id: 'c_' + Date.now(),
+        name: document.getElementById('newBoatName').value,
+        paddlerRows: parseInt(document.getElementById('newBoatRows').value),
+        roles: {
+          drummer: document.getElementById('roleDrummer').checked ? 1 : 0,
+          steer: document.getElementById('roleSteer').checked ? 1 : 0,
+          gong: document.getElementById('roleGong').checked ? 1 : 0,
+          captain: document.getElementById('roleCaptain').checked ? 1 : 0
+        }
+      });
+      modal.classList.add('hidden');
+      renderApp();
+    };
+    renderApp();
+  </script>
+</body>
+</html>
